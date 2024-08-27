@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>برنامج الموظفين</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+            direction: rtl;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            margin-bottom: 30px;
+            color: #4CAF50;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .report-table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        .report-table th, .report-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        .report-table th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .summary {
+            margin-top: 20px;
+            font-size: 20px;
+        }
+        .top-panel {
+            margin-bottom: 20px;
+        }
+        #passwordPrompt {
+            display: none;
+            margin-top: 20px;
+        }
+        #customFilter {
+            margin-top: 10px;
+        }
+        .delete-button {
+            background-color: red;
+            padding: 5px 10px;
+            font-size: 14px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .delete-button:hover {
+            background-color: darkred;
+        }
+        .timer {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>برنامج الموظفين</h1>
+        <div id="main-page">
+            <button onclick="showTimeTracking()">تسجيل الوقت</button>
+            <button onclick="showReports()">عرض التقارير</button>
+        </div>
+
+        <div id="time-tracking-page" style="display:none;">
+            <h2>تسجيل الوقت</h2>
+            <div>
+                <button id="startButton" onclick="startWork()">بدء</button>
+                <button id="endButton" onclick="endWork()" disabled>إنهاء</button>
+            </div>
+            <div>
+                <button id="startBreakButton" onclick="startBreak()" disabled>بدء بريك</button>
+                <button id="endBreakButton" onclick="endBreak()" disabled>إنهاء بريك</button>
+            </div>
+            <div id="timeDisplay"></div>
+            <div id="breakTimer" class="timer">وقت البريك: 00:00:00</div>
+            <button onclick="showMainPage()">العودة إلى الصفحة الرئيسية</button>
+        </div>
+
+        <div id="reports-page" style="display:none;">
+            <div class="top-panel">
+                <button onclick="exportToPDF()">تصدير إلى PDF</button>
+                <button onclick="window.print()">طباعة</button>
+                <button onclick="showMainPage()">العودة إلى التسجيل</button>
+                <button id="editButton" onclick="toggleEdit()">تحرير</button>
+            </div>
+            <div id="passwordPrompt" style="display:none;">
+                <label for="password">أدخل كلمة السر:</label>
+                <input type="password" id="password" />
+                <button onclick="checkPassword()">تأكيد</button>
+            </div>
+            <div>
+                <label for="filter">عرض البيانات:</label>
+                <select id="filter" onchange="filterReports()">
+                    <option value="none">غير محدد</option>
+                    <option value="day">اليوم</option>
+                    <option value="week">آخر أسبوع</option>
+                    <option value="month">الشهر الحالي</option>
+                    <option value="year">السنة</option>
+                    <option value="custom">مخصص</option>
+                </select>
+                            </div>
+            <!-- نموذج تحرير التقرير -->
+<div id="editModal" style="display: none;">
+    <h3>تعديل التقرير</h3>
+    <label for="editDate">التاريخ:</label>
+    <input type="date" id="editDate"><br>
+    <label for="editStartTime">وقت الدخول:</label>
+    <input type="time" id="editStartTime"><br>
+    <label for="editEndTime">وقت الخروج:</label>
+    <input type="time" id="editEndTime"><br>
+    <label for="editBreakDuration">مدة البريك:</label>
+    <input type="text" id="editBreakDuration"><br>
+    <input type="hidden" id="editIndex">
+    <button onclick="saveEdit()">حفظ البيانات</button>
+    <button onclick="document.getElementById('editModal').style.display = 'none';">إلغاء</button>
+</div>
+<div id="customFilter" style="display:none;">
+    <input type="date" id="startDate"> إلى 
+    <input type="date" id="endDate">
+    <button onclick="filterReports()">تطبيق</button>
+</div>
+
+            <div id="customFilter" style="display:none;">
+                <input type="date" id="startDate"> إلى 
+                <input type="date" id="endDate">
+                <button onclick="applyCustomFilter()">تطبيق</button>
+            </div>
+            <div class="summary">
+                <span>عدد ساعات الدوام الفعلي: <span id="totalHours">0</span></span><br>
+                <span>عدد الأيام: <span id="totalDays">0</span></span>
+            </div>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>التاريخ</th>
+                        <th>وقت الدخول</th>
+                        <th>وقت الخروج</th>
+                        <th>مدة البريك</th>
+                        <th>وقت العمل الفعلي</th>
+                        <th>وقت العمل بعد خصم البريك</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="reportBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+let startTime, endTime;
+let breakStartTime, breakEndTime;
+let totalBreakTime = 0;
+let currentBreakDuration = 0;
+let breakTimerInterval;
+let reports = JSON.parse(localStorage.getItem('reports')) || [];
+let isEditing = false;
+const PASSWORD = "4455";
+
+document.addEventListener("DOMContentLoaded", function() {
+    loadTrackingState();
+    displayReports();
+});
+
+function showMainPage() {
+    document.getElementById('main-page').style.display = 'block';
+    document.getElementById('time-tracking-page').style.display = 'none';
+    document.getElementById('reports-page').style.display = 'none';
+}
+
+function showTimeTracking() {
+    document.getElementById('main-page').style.display = 'none';
+    document.getElementById('time-tracking-page').style.display = 'block';
+    document.getElementById('reports-page').style.display = 'none';
+    loadTrackingState();
+}
+
+function showReports() {
+    document.getElementById('main-page').style.display = 'none';
+    document.getElementById('time-tracking-page').style.display = 'none';
+    document.getElementById('reports-page').style.display = 'block';
+    displayReports();
+}
+
+function startWork() {
+    startTime = new Date();
+    localStorage.setItem('startTime', startTime.toISOString());
+    document.getElementById('startButton').disabled = true;
+    document.getElementById('endButton').disabled = false;
+    document.getElementById('startBreakButton').disabled = false;
+    document.getElementById('timeDisplay').innerHTML = `وقت البدء: ${startTime.toLocaleTimeString()}`;
+}
+
+function startBreak() {
+    if (!breakStartTime) {
+        breakStartTime = new Date();
+        localStorage.setItem('breakStartTime', breakStartTime.toISOString());
+        localStorage.setItem('breakTimerStart', breakStartTime.getTime()); // Save the exact start time in milliseconds
+        document.getElementById('startBreakButton').disabled = true;
+        document.getElementById('endBreakButton').disabled = false;
+        startBreakTimer();
+    }
+}
+
+function startBreakTimer() {
+    const breakTimerElement = document.getElementById('breakTimer');
+    breakTimerInterval = setInterval(() => {
+        const now = new Date();
+        const elapsed = Math.floor((now - breakStartTime) / 1000); // Calculate elapsed time in seconds
+        currentBreakDuration += elapsed;
+        breakStartTime = now; // Update breakStartTime to the current time
+        const hours = Math.floor(currentBreakDuration / 3600);
+        const minutes = Math.floor((currentBreakDuration % 3600) / 60);
+        const seconds = currentBreakDuration % 60;
+        breakTimerElement.textContent = `وقت البريك: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        localStorage.setItem('currentBreakDuration', currentBreakDuration);
+        localStorage.setItem('breakTimerStart', breakStartTime.getTime());
+    }, 1000);
+}
+
+function endBreak() {
+    if (breakStartTime) {
+        breakEndTime = new Date();
+        clearInterval(breakTimerInterval); // Stop the break timer
+        const breakDuration = (breakEndTime - breakStartTime) / 1000; // in seconds
+        currentBreakDuration += breakDuration;
+        totalBreakTime += currentBreakDuration / 3600; // in hours
+        localStorage.setItem('totalBreakTime', totalBreakTime);
+        document.getElementById('startBreakButton').disabled = false;
+        document.getElementById('endBreakButton').disabled = true;
+        breakStartTime = null;
+        document.getElementById('breakTimer').textContent = `وقت البريك: ${formatTime(currentBreakDuration)}`;
+        localStorage.setItem('currentBreakDuration', currentBreakDuration);
+        localStorage.removeItem('breakStartTime');
+        localStorage.removeItem('breakTimerStart');
+    }
+}
+
+function formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const sec = seconds % 60;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+// دالة لتحويل الساعات العشرية إلى تنسيق الوقت HH:MM
+function convertDecimalToTime(decimalHours) {
+    const hours = Math.floor(decimalHours);
+    const minutes = Math.round((decimalHours - hours) * 60);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+// دالة لتحويل الساعات العشرية إلى تنسيق الوقت HH:MM
+function convertDecimalToTime(decimalHours) {
+    const hours = Math.floor(decimalHours);
+    const minutes = Math.round((decimalHours - hours) * 60);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+// دالة لتحويل الوقت بصيغة HH:MM إلى ساعات عشرية
+function convertTimeToDecimal(timeString) {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours + minutes / 60;
+}
+
+function endWork() {
+    endTime = new Date();
+    localStorage.setItem('endTime', endTime.toISOString());
+
+    document.getElementById('endButton').disabled = true;
+    document.getElementById('startButton').disabled = false;
+    document.getElementById('startBreakButton').disabled = true;
+    document.getElementById('endBreakButton').disabled = true;
+
+    const startTime = new Date(localStorage.getItem('startTime'));
+    const totalTime = (endTime - startTime) / (1000 * 60 * 60); // in hours
+    const workTime = totalTime - totalBreakTime;
+
+    const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`; // تنسيق yyyy-mm-dd
+    };
+
+    const report = {
+        date: formatDate(startTime), // استخدام الدالة لتنسيق التاريخ
+        startTime: startTime.toLocaleTimeString(),
+        endTime: endTime.toLocaleTimeString(),
+        breakDuration: formatTime(currentBreakDuration),
+        workTime: convertDecimalToTime(workTime), // تحويل وقت العمل إلى تنسيق HH:MM
+        totalTime: convertDecimalToTime(totalTime) // تحويل الوقت الإجمالي إلى تنسيق HH:MM
+    };
+
+    reports.push(report);
+    localStorage.setItem('reports', JSON.stringify(reports));
+    resetTracking();
+    alert('تم حفظ وقت العمل بنجاح');
+}
+
+function resetTracking() {
+    startTime = null;
+    endTime = null;
+    breakStartTime = null;
+    breakEndTime = null;
+    totalBreakTime = 0;
+    currentBreakDuration = 0;
+
+    localStorage.removeItem('startTime');
+    localStorage.removeItem('endTime');
+    localStorage.removeItem('breakStartTime');
+    localStorage.removeItem('breakTimerStart');
+    localStorage.removeItem('currentBreakDuration');
+    localStorage.removeItem('totalBreakTime');
+
+    document.getElementById('startButton').disabled = false;
+    document.getElementById('startBreakButton').disabled = true;
+    document.getElementById('endBreakButton').disabled = true;
+    document.getElementById('endButton').disabled = true;
+    document.getElementById('timeDisplay').innerHTML = '';
+    document.getElementById('breakTimer').textContent = 'وقت البريك: 00:00:00';
+}
+
+function loadTrackingState() {
+    const savedStartTime = localStorage.getItem('startTime');
+    if (savedStartTime) {
+        startTime = new Date(savedStartTime);
+        document.getElementById('startButton').disabled = true;
+        document.getElementById('endButton').disabled = false;
+        document.getElementById('startBreakButton').disabled = false;
+        document.getElementById('timeDisplay').innerHTML = `وقت البدء: ${startTime.toLocaleTimeString()}`;
+    }
+
+    const savedBreakStartTime = localStorage.getItem('breakStartTime');
+    if (savedBreakStartTime) {
+        breakStartTime = new Date(savedBreakStartTime);
+        const savedBreakTimerStart = parseInt(localStorage.getItem('breakTimerStart'), 10);
+        const now = new Date();
+        const elapsedTime = Math.floor((now.getTime() - savedBreakTimerStart) / 1000); // in seconds
+        currentBreakDuration = parseFloat(localStorage.getItem('currentBreakDuration') || '0') + elapsedTime;
+        totalBreakTime = parseFloat(localStorage.getItem('totalBreakTime') || '0');
+        document.getElementById('startBreakButton').disabled = true;
+        document.getElementById('endBreakButton').disabled = false;
+        startBreakTimer();
+        document.getElementById('breakTimer').textContent = `وقت البريك: ${formatTime(currentBreakDuration)}`;
+    } else {
+        const savedCurrentBreakDuration = localStorage.getItem('currentBreakDuration');
+        if (savedCurrentBreakDuration) {
+            currentBreakDuration = parseFloat(savedCurrentBreakDuration);
+            document.getElementById('breakTimer').textContent = `وقت البريك: ${formatTime(currentBreakDuration)}`;
+        }
+    }
+}
+
+function displayReports(filteredReports = reports) {
+    const reportBody = document.getElementById('reportBody');
+    reportBody.innerHTML = '';
+
+    let totalHours = 0;
+    let totalDays = filteredReports.length;
+
+    // عكس ترتيب التقارير ليظهر الأحدث أولاً
+    filteredReports.reverse();
+
+    filteredReports.forEach((report, index) => {
+        totalHours += convertTimeToDecimal(report.workTime);
+        const row = `<tr>
+            <td>${report.date}</td>
+            <td>${report.startTime}</td>
+            <td>${report.endTime}</td>
+            <td>${report.breakDuration}</td>
+            <td>${report.workTime}</td>
+            <td>${report.totalTime}</td>
+            ${isEditing ? `<td><button class="edit-button" onclick="editReport(${index})">تعديل</button> <button class="delete-button" onclick="deleteReport(${index})">x</button></td>` : '<td></td>'}
+        </tr>`;
+        reportBody.innerHTML += row;
+    });
+
+    document.getElementById('totalHours').innerText = convertDecimalToTime(totalHours);
+    document.getElementById('totalDays').innerText = totalDays;
+}
+
+function editReport(index) {
+    const report = reports[index];
+    document.getElementById('editDate').value = report.date;
+    document.getElementById('editStartTime').value = report.startTime;
+    document.getElementById('editEndTime').value = report.endTime;
+    document.getElementById('editBreakDuration').value = report.breakDuration;
+    document.getElementById('editIndex').value = index;
+    document.getElementById('editModal').style.display = 'block';
+}
+
+function saveEdit() {
+    const index = parseInt(document.getElementById('editIndex').value, 10);
+    const editedReport = {
+        date: document.getElementById('editDate').value,
+        startTime: document.getElementById('editStartTime').value,
+        endTime: document.getElementById('editEndTime').value,
+        breakDuration: document.getElementById('editBreakDuration').value,
+        workTime: calculateWorkTime(
+            document.getElementById('editStartTime').value,
+            document.getElementById('editEndTime').value,
+            document.getElementById('editBreakDuration').value
+        ),
+        totalTime: calculateTotalTime(
+            document.getElementById('editStartTime').value,
+            document.getElementById('editEndTime').value
+        )
+    };
+    reports[index] = editedReport;
+    localStorage.setItem('reports', JSON.stringify(reports));
+    document.getElementById('editModal').style.display = 'none';
+    displayReports();
+}
+
+function calculateWorkTime(startTime, endTime, breakDuration) {
+    const start = new Date(`1970-01-01T${startTime}:00`);
+    const end = new Date(`1970-01-01T${endTime}:00`);
+    const breakTime = parseDuration(breakDuration);
+    const workDuration = (end - start - breakTime) / (1000 * 60 * 60); // Convert to hours
+    return convertDecimalToTime(workDuration); // تحويل وقت العمل إلى تنسيق HH:MM
+}
+
+function calculateTotalTime(startTime, endTime) {
+    const start = new Date(`1970-01-01T${startTime}:00`);
+    const end = new Date(`1970-01-01T${endTime}:00`);
+    const totalDuration = (end - start) / (1000 * 60 * 60); // Convert to hours
+    return convertDecimalToTime(totalDuration); // تحويل الوقت الإجمالي إلى تنسيق HH:MM
+}
+
+function parseDuration(duration) {
+    const parts = duration.split(':');
+    return (parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10)) * 1000; // Convert to milliseconds
+}
+
+
+
+function toggleEdit() {
+    if (!isEditing) {
+        const password = prompt('يرجى إدخال كلمة السر لتفعيل التحرير');
+        if (password === PASSWORD) {
+            isEditing = true;
+            document.getElementById('editButton').textContent = 'حفظ البيانات';
+            displayReports();
+        } else {
+            alert('كلمة السر غير صحيحة');
+        }
+    } else {
+        isEditing = false;
+        document.getElementById('editButton').textContent = 'تحرير';
+        displayReports();
+    }
+}
+
+function deleteReport(index) {
+    if (confirm('هل أنت متأكد أنك تريد حذف هذا السجل؟')) {
+        reports.splice(index, 1);
+        localStorage.setItem('reports', JSON.stringify(reports));
+        displayReports();
+    }
+}
+
+function checkPassword() {
+    const password = document.getElementById('password').value;
+    if (password === PASSWORD) {
+        isEditing = true;
+        displayReports();
+        document.getElementById('passwordPrompt').style.display = 'none';
+    } else {
+        alert('كلمة السر غير صحيحة');
+    }
+}
+
+function exportToPDF() {
+    window.print(); // Simplified to use print since actual PDF export requires backend or external libraries
+}
+
+function editReport(index) {
+    const report = reports[index];
+    document.getElementById('editDate').value = report.date;
+    document.getElementById('editStartTime').value = report.startTime;
+    document.getElementById('editEndTime').value = report.endTime;
+    document.getElementById('editBreakDuration').value = report.breakDuration;
+    document.getElementById('editIndex').value = index;
+    document.getElementById('editModal').style.display = 'block';
+}
+
+function formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60); // تجاهل الأجزاء العشرية هنا
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function parseDuration(duration) {
+    const parts = duration.split(':');
+    return (parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10)) * 1000; // تحويل إلى ميلي ثانية
+}
+
+function calculateWorkTimeInSeconds(startTime, endTime, breakDuration) {
+    const start = new Date(`1970-01-01T${startTime}:00`);
+    const end = new Date(`1970-01-01T${endTime}:00`);
+    const breakTimeInSeconds = parseDuration(breakDuration) / 1000;
+    return (end - start) / 1000 - breakTimeInSeconds; // الوقت بالثواني
+}
+
+function calculateTotalTimeInSeconds(startTime, endTime) {
+    const start = new Date(`1970-01-01T${startTime}:00`);
+    const end = new Date(`1970-01-01T${endTime}:00`);
+    return (end - start) / 1000; // الوقت بالثواني
+}
+
+function saveEdit() {
+    const index = parseInt(document.getElementById('editIndex').value, 10);
+    const startTime = document.getElementById('editStartTime').value;
+    const endTime = document.getElementById('editEndTime').value;
+    const breakDuration = document.getElementById('editBreakDuration').value;
+
+    const workTimeInSeconds = calculateWorkTimeInSeconds(startTime, endTime, breakDuration);
+    const totalTimeInSeconds = calculateTotalTimeInSeconds(startTime, endTime);
+
+    const editedReport = {
+        date: document.getElementById('editDate').value,
+        startTime: startTime,
+        endTime: endTime,
+        breakDuration: formatTime(parseDuration(breakDuration) / 1000), // تحويل مدة البريك إلى ثوانٍ وتنسيقها
+        workTime: formatTime(workTimeInSeconds),
+        totalTime: formatTime(totalTimeInSeconds)
+    };
+
+    reports[index] = editedReport;
+    localStorage.setItem('reports', JSON.stringify(reports));
+    document.getElementById('editModal').style.display = 'none';
+    displayReports();
+}
+function filterReports() {
+    const filterValue = document.getElementById('filter').value;
+    let filteredReports = reports;
+    
+    const now = new Date();
+    
+    // إعادة تعيين تواريخ الانطلاق لتفادي التعديلات غير المقصودة
+    const startOfWeek = new Date(now);
+    const startOfMonth = new Date(now);
+    const startOfYear = new Date(now);
+
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // بدء الأسبوع
+    startOfMonth.setDate(1); // بدء الشهر
+    startOfYear.setMonth(0, 1); // بدء السنة
+    
+    if (filterValue === 'day') {
+        const today = now.toISOString().split('T')[0];
+        filteredReports = reports.filter(report => report.date === today);
+    } else if (filterValue === 'week') {
+        const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
+        filteredReports = reports.filter(report => new Date(report.date) >= new Date(startOfWeekStr));
+    } else if (filterValue === 'month') {
+        const startOfMonthStr = startOfMonth.toISOString().split('T')[0];
+        filteredReports = reports.filter(report => new Date(report.date) >= new Date(startOfMonthStr));
+    } else if (filterValue === 'year') {
+        const startOfYearStr = startOfYear.toISOString().split('T')[0];
+        filteredReports = reports.filter(report => new Date(report.date) >= new Date(startOfYearStr));
+    } else if (filterValue === 'custom') {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        if (startDate && endDate) {
+            filteredReports = reports.filter(report => {
+                const reportDate = new Date(report.date);
+                return reportDate >= new Date(startDate) && reportDate <= new Date(endDate);
+            });
+        }
+    }
+    
+    displayReports(filteredReports);
+}
+    </script>
+</body>
+</html>
